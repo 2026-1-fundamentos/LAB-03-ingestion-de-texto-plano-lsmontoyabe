@@ -3,7 +3,7 @@ Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 """
 
 # pylint: disable=import-outside-toplevel
-
+import re 
 import pandas as pd
 def pregunta_01():
     """
@@ -18,31 +18,55 @@ def pregunta_01():
 
 
     """
-    # 1. Cargar el archivo (ajusta la ruta si es necesario)
-    df = pd.read_csv("files/input/keywords.csv")
+    with open("files/input/clusters_report.txt", encoding="utf-8") as f:
+        lines = f.readlines()
 
-    # 2. Agrupar por 'cluster'
-    # 'cantidad_de_palabras_clave' es el conteo por grupo
-    df_grouped = df.groupby("cluster")["keyword"].agg(
-        cantidad_de_palabras_clave="count",
-        principales_palabras_clave=lambda x: ", ".join(sorted(x))
+    registros = []
+    actual = None
+
+    for line in lines:
+
+        # elimina salto de línea
+        line = line.rstrip()
+
+        # inicio de un nuevo cluster
+        m = re.match(
+            r"^\s*(\d+)\s+(\d+)\s+(\d+,\d+)\s+%\s+(.*)$",
+            line,
+        )
+
+        if m:
+
+            if actual is not None:
+                registros.append(actual)
+
+            actual = {
+                "cluster": int(m.group(1)),
+                "cantidad_de_palabras_clave": int(m.group(2)),
+                "porcentaje_de_palabras_clave": float(
+                    m.group(3).replace(",", ".")
+                ),
+                "principales_palabras_clave": m.group(4).strip(),
+            }
+
+        elif actual is not None:
+
+            texto = line.strip()
+
+            if texto != "":
+                actual["principales_palabras_clave"] += " " + texto
+
+    registros.append(actual)
+
+    df = pd.DataFrame(registros)
+
+    # eliminar múltiples espacios
+    df["principales_palabras_clave"] = (
+        df["principales_palabras_clave"]
+        .str.replace(r"\s+", " ", regex=True)
+        .str.replace(r"\s*,\s*", ", ", regex=True)
+        .str.replace(r"\.$", "", regex=True)
+        .str.strip()
     )
 
-    # 3. Calcular el porcentaje
-    total_keywords = df_grouped["cantidad_de_palabras_clave"].sum()
-    df_grouped["porcentaje_de_palabras_clave"] = (
-        (df_grouped["cantidad_de_palabras_clave"] / total_keywords) * 100
-    ).round(1)
-
-    # 4. Formatear y ordenar
-    df_grouped = df_grouped.reset_index()
-    
-    # Asegurar que las columnas estén en el orden correcto
-    return df_grouped[[
-        "cluster", 
-        "cantidad_de_palabras_clave", 
-        "porcentaje_de_palabras_clave", 
-        "principales_palabras_clave"
-    ]]
-
-    
+    return df
