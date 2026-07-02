@@ -4,7 +4,7 @@ Escriba el codigo que ejecute la accion solicitada en cada pregunta.
 
 # pylint: disable=import-outside-toplevel
 
-
+import pandas as pd
 def pregunta_01():
     """
     Construya y retorne un dataframe de Pandas a partir del archivo
@@ -18,3 +18,31 @@ def pregunta_01():
 
 
     """
+    # 1. Cargar el archivo (ajusta la ruta si es necesario)
+    df = pd.read_csv("files/input/keywords.csv")
+
+    # 2. Agrupar por 'cluster'
+    # 'cantidad_de_palabras_clave' es el conteo por grupo
+    df_grouped = df.groupby("cluster")["keyword"].agg(
+        cantidad_de_palabras_clave="count",
+        principales_palabras_clave=lambda x: ", ".join(sorted(x))
+    )
+
+    # 3. Calcular el porcentaje
+    total_keywords = df_grouped["cantidad_de_palabras_clave"].sum()
+    df_grouped["porcentaje_de_palabras_clave"] = (
+        (df_grouped["cantidad_de_palabras_clave"] / total_keywords) * 100
+    ).round(1)
+
+    # 4. Formatear y ordenar
+    df_grouped = df_grouped.reset_index()
+    
+    # Asegurar que las columnas estén en el orden correcto
+    return df_grouped[[
+        "cluster", 
+        "cantidad_de_palabras_clave", 
+        "porcentaje_de_palabras_clave", 
+        "principales_palabras_clave"
+    ]]
+
+    
